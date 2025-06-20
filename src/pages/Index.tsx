@@ -1,10 +1,12 @@
 
 import { useState, useEffect, useRef } from 'react';
-import { Send, Bot, User } from 'lucide-react';
+import { Send, Bot } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import ChatMessage from '@/components/ChatMessage';
 import TypingIndicator from '@/components/TypingIndicator';
+import APIKeySettings from '@/components/APIKeySettings';
+import { AIService } from '@/services/aiService';
 
 interface Message {
   id: number;
@@ -17,14 +19,28 @@ const Index = () => {
   const [messages, setMessages] = useState<Message[]>([
     {
       id: 1,
-      text: "Heyy! 👋 Main tumhara friendly chatbot hu! Kya haal chaal? 😊",
+      text: "Heyy! 👋 Main tumhara AI chatbot hu! Kuch bhi poocho - main sab jawab de sakta hu! 😊",
       isBot: true,
       timestamp: new Date()
     }
   ]);
   const [inputText, setInputText] = useState('');
   const [isTyping, setIsTyping] = useState(false);
+  const [apiKey, setApiKey] = useState(() => localStorage.getItem('openai-api-key') || '');
+  const [showSettings, setShowSettings] = useState(false);
   const messagesEndRef = useRef<HTMLDivElement>(null);
+  const aiServiceRef = useRef<AIService | null>(null);
+
+  // Initialize AI service when API key changes
+  useEffect(() => {
+    if (apiKey) {
+      aiServiceRef.current = new AIService({ apiKey });
+      localStorage.setItem('openai-api-key', apiKey);
+    } else {
+      aiServiceRef.current = null;
+      localStorage.removeItem('openai-api-key');
+    }
+  }, [apiKey]);
 
   const scrollToBottom = () => {
     messagesEndRef.current?.scrollIntoView({ behavior: "smooth" });
@@ -34,7 +50,7 @@ const Index = () => {
     scrollToBottom();
   }, [messages]);
 
-  const getBotResponse = (userMessage: string): string => {
+  const getFallbackResponse = (userMessage: string): string => {
     const lowerMessage = userMessage.toLowerCase();
     
     // Greetings
@@ -48,52 +64,8 @@ const Index = () => {
       return greetings[Math.floor(Math.random() * greetings.length)];
     }
     
-    // How are you
-    if (lowerMessage.includes('how are you') || lowerMessage.includes('kaise ho') || lowerMessage.includes('kya haal')) {
-      const responses = [
-        "Main ekdum mast hu! 😎 Tu bata, tera din kaisa gaya?",
-        "Bas chill kar raha hu! Tum sunao, kya kar rahe ho? 🙂",
-        "Sab badhiya hai mere paas! Tumhara kya scene hai? 😄"
-      ];
-      return responses[Math.floor(Math.random() * responses.length)];
-    }
-    
-    // Name questions
-    if (lowerMessage.includes('name') || lowerMessage.includes('naam')) {
-      return "Main hu tumhara friendly bot! 🤖 Tum mujhe koi bhi naam de sakte ho. Tumhara naam kya hai? 😊";
-    }
-    
-    // Weather
-    if (lowerMessage.includes('weather') || lowerMessage.includes('mausam')) {
-      return "Yaar main weather check nahi kar sakta, but I hope aaj ka din achha ho! ☀️ Tumhare yahan kaisa mausam hai? 🌤️";
-    }
-    
-    // Feeling sad/bad
-    if (lowerMessage.includes('sad') || lowerMessage.includes('upset') || lowerMessage.includes('down')) {
-      return "Aww yaar, kya hua? 😔 Share kar sakte ho mere saath. Sometimes baat karne se achha lagta hai! 💙";
-    }
-    
-    // Happy/good responses
-    if (lowerMessage.includes('happy') || lowerMessage.includes('good') || lowerMessage.includes('great') || lowerMessage.includes('achha')) {
-      return "Yayy! That's amazing! 🎉 Mujhe bhi khushi hui sunke! Keep spreading those good vibes! ✨";
-    }
-    
-    // Food related
-    if (lowerMessage.includes('food') || lowerMessage.includes('khana') || lowerMessage.includes('eat')) {
-      return "Ooh khana! 🍽️ Main toh bot hu but mujhe lagta hai ghar ka khana sabse best hota hai! Tumne kya khaya aaj? 😋";
-    }
-    
-    // Default responses
-    const defaultResponses = [
-      "Interesting! Tell me more about it 🤔",
-      "Haan haan, bilkul! Aur kya chal raha hai? 😊",
-      "Oh nice! Thanks for sharing that with me! 💫",
-      "Sahi hai yaar! Aur batao kya scene hai? 🙌",
-      "Cool cool! Main sun raha hu, continue karo! 👂",
-      "Haha, mast hai! Aur kuch interesting hua aaj? 😄"
-    ];
-    
-    return defaultResponses[Math.floor(Math.random() * defaultResponses.length)];
+    // API key missing message
+    return "Yaar AI functionality ke liye OpenAI API key chahiye! 🔑 Settings mein jaake add kar do, phir main tumhare saare questions ka jawab de sakta hu! 😊";
   };
 
   const handleSendMessage = async () => {
@@ -108,21 +80,48 @@ const Index = () => {
     };
 
     setMessages(prev => [...prev, userMessage]);
+    const currentInput = inputText;
     setInputText('');
     setIsTyping(true);
 
-    // Simulate bot typing delay
-    setTimeout(() => {
-      const botResponse: Message = {
-        id: Date.now() + 1,
-        text: getBotResponse(inputText),
-        isBot: true,
-        timestamp: new Date()
-      };
+    try {
+      let botResponseText: string;
       
-      setMessages(prev => [...prev, botResponse]);
-      setIsTyping(false);
-    }, 1000 + Math.random() * 2000); // Random delay between 1-3 seconds
+      if (aiServiceRef.current && apiKey) {
+        // Use AI service for intelligent responses
+        botResponseText = await aiServiceRef.current.getAIResponse(currentInput, messages);
+      } else {
+        // Fallback to simple responses
+        botResponseText = getFallbackResponse(currentInput);
+      }
+
+      // Simulate typing delay
+      setTimeout(() => {
+        const botResponse: Message = {
+          id: Date.now() + 1,
+          text: botResponseText,
+          isBot: true,
+          timestamp: new Date()
+        };
+        
+        setMessages(prev => [...prev, botResponse]);
+        setIsTyping(false);
+      }, 1000 + Math.random() * 1000);
+      
+    } catch (error) {
+      console.error('Error getting bot response:', error);
+      setTimeout(() => {
+        const errorResponse: Message = {
+          id: Date.now() + 1,
+          text: "Sorry yaar, kuch technical problem aa gaya! 😔 Thoda baad try karna.",
+          isBot: true,
+          timestamp: new Date()
+        };
+        
+        setMessages(prev => [...prev, errorResponse]);
+        setIsTyping(false);
+      }, 1000);
+    }
   };
 
   const handleKeyPress = (e: React.KeyboardEvent) => {
@@ -133,6 +132,14 @@ const Index = () => {
 
   return (
     <div className="min-h-screen bg-gradient-to-b from-green-50 to-green-100 flex flex-col">
+      {/* API Key Settings */}
+      <APIKeySettings
+        apiKey={apiKey}
+        onApiKeyChange={setApiKey}
+        isOpen={showSettings}
+        onToggle={() => setShowSettings(!showSettings)}
+      />
+
       {/* Header */}
       <div className="bg-green-600 text-white p-4 shadow-lg">
         <div className="flex items-center gap-3">
@@ -140,8 +147,10 @@ const Index = () => {
             <Bot size={24} />
           </div>
           <div>
-            <h1 className="font-semibold text-lg">Friendly Bot</h1>
-            <p className="text-green-100 text-sm">Always here to chat! 😊</p>
+            <h1 className="font-semibold text-lg">AI Chatbot</h1>
+            <p className="text-green-100 text-sm">
+              {apiKey ? "AI powered & ready to help! 🚀" : "Add API key to unlock AI! ⚡"}
+            </p>
           </div>
         </div>
       </div>
@@ -162,7 +171,7 @@ const Index = () => {
             value={inputText}
             onChange={(e) => setInputText(e.target.value)}
             onKeyPress={handleKeyPress}
-            placeholder="Type your message... 💬"
+            placeholder="Ask me anything... 🤖"
             className="flex-1 rounded-full border-gray-300 focus:border-green-500 focus:ring-green-500"
           />
           <Button
