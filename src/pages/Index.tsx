@@ -26,7 +26,11 @@ const Index = () => {
   ]);
   const [inputText, setInputText] = useState('');
   const [isTyping, setIsTyping] = useState(false);
-  const [apiKey, setApiKey] = useState(() => localStorage.getItem('openai-api-key') || '');
+  const [apiKey, setApiKey] = useState(() => {
+    // Check if API key is already stored, otherwise use the provided key
+    const storedKey = localStorage.getItem('openai-api-key');
+    return storedKey || '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';
+  });
   const [showSettings, setShowSettings] = useState(false);
   const messagesEndRef = useRef<HTMLDivElement>(null);
   const aiServiceRef = useRef<AIService | null>(null);
