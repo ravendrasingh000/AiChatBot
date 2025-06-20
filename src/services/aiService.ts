@@ -33,14 +33,17 @@ export class AIService {
         }
       ];
 
-      const response = await fetch('https://api.openai.com/v1/chat/completions', {
+      // Use OpenRouter API endpoint since the key appears to be from OpenRouter
+      const response = await fetch('https://openrouter.ai/api/v1/chat/completions', {
         method: 'POST',
         headers: {
           'Authorization': `Bearer ${this.apiKey}`,
           'Content-Type': 'application/json',
+          'HTTP-Referer': window.location.origin,
+          'X-Title': 'AI Chatbot'
         },
         body: JSON.stringify({
-          model: 'gpt-4o-mini',
+          model: 'gpt-3.5-turbo',
           messages: messages,
           max_tokens: 300,
           temperature: 0.7,
