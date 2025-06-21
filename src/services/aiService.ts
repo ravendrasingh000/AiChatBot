@@ -39,18 +39,21 @@ export class AIService {
       ];
 
       console.log('Making API request to OpenRouter...');
+      console.log('API Key length:', this.apiKey.length);
+      console.log('API Key prefix:', this.apiKey.substring(0, 10) + '...');
       
-      // Use OpenRouter API endpoint since the key appears to be from OpenRouter
+      // Use OpenRouter API endpoint with proper headers
       const response = await fetch('https://openrouter.ai/api/v1/chat/completions', {
         method: 'POST',
         headers: {
           'Authorization': `Bearer ${this.apiKey}`,
           'Content-Type': 'application/json',
           'HTTP-Referer': window.location.origin,
-          'X-Title': 'AI Chatbot'
+          'X-Title': 'AI Chatbot',
+          'Accept': 'application/json'
         },
         body: JSON.stringify({
-          model: 'openai/gpt-3.5-turbo',
+          model: 'meta-llama/llama-3.2-3b-instruct:free',
           messages: messages,
           max_tokens: 300,
           temperature: 0.7,
@@ -58,19 +61,20 @@ export class AIService {
       });
 
       console.log('API Response status:', response.status);
+      console.log('Response headers:', Object.fromEntries(response.headers.entries()));
 
       if (!response.ok) {
         const errorData = await response.json().catch(() => ({}));
         console.error('API Error Details:', errorData);
         
         if (response.status === 401) {
-          return "API key invalid hai yaar! 🔑 Settings mein jaake nahi key daalo - maybe expired ho gayi hai?";
+          return "API key invalid hai yaar! 🔑 OpenRouter mein check karo - key sahi hai ya expired toh nahi?";
         } else if (response.status === 402) {
           return "Credits khatam ho gaye! 💸 OpenRouter account mein balance add karo.";
         } else if (response.status === 429) {
           return "Bohot zyada requests kar diye! 😅 Thoda wait karo phir try karna.";
         } else {
-          return `API error aa gaya: ${response.status}. 😔 Thoda baad try karna.`;
+          return `API error aa gaya: ${response.status}. 😔 Error: ${JSON.stringify(errorData)}`;
         }
       }
 
