@@ -15,6 +15,11 @@ export class AIService {
       return "API key nahi mila yaar! 😅 Pehle API key daal do settings mein.";
     }
 
+    // Validate API key format
+    if (!this.apiKey.startsWith('sk-or-v1-')) {
+      return "Yaar ye OpenRouter API key nahi lag rahi! 🤔 Sahi key daalo jo 'sk-or-v1-' se start hoti hai.";
+    }
+
     try {
       // Create conversation context for better responses
       const messages = [
@@ -33,6 +38,8 @@ export class AIService {
         }
       ];
 
+      console.log('Making API request to OpenRouter...');
+      
       // Use OpenRouter API endpoint since the key appears to be from OpenRouter
       const response = await fetch('https://openrouter.ai/api/v1/chat/completions', {
         method: 'POST',
@@ -43,19 +50,33 @@ export class AIService {
           'X-Title': 'AI Chatbot'
         },
         body: JSON.stringify({
-          model: 'gpt-3.5-turbo',
+          model: 'openai/gpt-3.5-turbo',
           messages: messages,
           max_tokens: 300,
           temperature: 0.7,
         }),
       });
 
+      console.log('API Response status:', response.status);
+
       if (!response.ok) {
-        console.error('API Error:', response.status, response.statusText);
-        return "Sorry yaar, kuch technical problem aa gaya! 😔 Thoda baad try karna.";
+        const errorData = await response.json().catch(() => ({}));
+        console.error('API Error Details:', errorData);
+        
+        if (response.status === 401) {
+          return "API key invalid hai yaar! 🔑 Settings mein jaake nahi key daalo - maybe expired ho gayi hai?";
+        } else if (response.status === 402) {
+          return "Credits khatam ho gaye! 💸 OpenRouter account mein balance add karo.";
+        } else if (response.status === 429) {
+          return "Bohot zyada requests kar diye! 😅 Thoda wait karo phir try karna.";
+        } else {
+          return `API error aa gaya: ${response.status}. 😔 Thoda baad try karna.`;
+        }
       }
 
       const data = await response.json();
+      console.log('API Response data:', data);
+      
       return data.choices[0]?.message?.content || "Hmm, kuch samajh nahi aaya! 🤔 Fir se try karo.";
     } catch (error) {
       console.error('AI Service Error:', error);
