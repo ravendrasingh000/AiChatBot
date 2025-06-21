@@ -38,61 +38,68 @@ export class AIService {
         }
       ];
 
-      console.log('Making API request to OpenRouter...');
-      console.log('API Key length:', this.apiKey.length);
-      console.log('API Key prefix:', this.apiKey.substring(0, 15) + '...');
-      console.log('Full API Key for debugging:', this.apiKey);
+      console.log('Making OpenRouter API request...');
+      console.log('Using API Key:', this.apiKey.substring(0, 20) + '...');
       
-      // Try multiple approaches for OpenRouter API
       const requestBody = {
         model: 'meta-llama/llama-3.2-3b-instruct:free',
         messages: messages,
         max_tokens: 300,
         temperature: 0.7,
+        stream: false
       };
 
       console.log('Request body:', JSON.stringify(requestBody, null, 2));
       
-      // Use OpenRouter API endpoint with all possible headers
       const response = await fetch('https://openrouter.ai/api/v1/chat/completions', {
         method: 'POST',
         headers: {
           'Authorization': `Bearer ${this.apiKey}`,
           'Content-Type': 'application/json',
           'HTTP-Referer': window.location.origin,
-          'X-Title': 'AI Chatbot',
-          'Accept': 'application/json',
-          'Origin': window.location.origin,
-          'User-Agent': 'AI-Chatbot/1.0'
+          'X-Title': 'AI Chatbot App'
         },
         body: JSON.stringify(requestBody),
       });
 
-      console.log('API Response status:', response.status);
-      console.log('Response headers:', Object.fromEntries(response.headers.entries()));
-
+      console.log('OpenRouter response status:', response.status);
+      
       if (!response.ok) {
-        const errorData = await response.json().catch(() => ({}));
-        console.error('API Error Details:', errorData);
+        const responseText = await response.text();
+        console.error('OpenRouter API Error:', response.status, responseText);
+        
+        let errorData;
+        try {
+          errorData = JSON.parse(responseText);
+        } catch {
+          errorData = { error: { message: responseText } };
+        }
         
         if (response.status === 401) {
-          return "Yaar API key problem hai! 🔑 OpenRouter dashboard mein check karo:\n1. Key valid hai?\n2. Credits available hain?\n3. Key ko regenerate kar ke try karo\n\nAbhi ke liye fallback response de raha hu! 😊";
+          console.error('Auth error - checking key validity');
+          return "Yaar API key mein problem hai! 🔑 OpenRouter dashboard check karo:\n1. Key valid hai?\n2. Credits available hain?\n3. Key regenerate kar ke try karo";
         } else if (response.status === 402) {
           return "Credits khatam ho gaye! 💸 OpenRouter account mein balance add karo.";
         } else if (response.status === 429) {
-          return "Bohot zyada requests kar diye! 😅 Thoda wait karo phir try karna.";
+          return "Rate limit exceed ho gaya! 😅 Thoda wait karo.";
         } else {
-          return `API error aa gaya: ${response.status}. 😔 Error: ${JSON.stringify(errorData)}`;
+          return `OpenRouter API error: ${response.status} - ${errorData.error?.message || 'Unknown error'}`;
         }
       }
 
       const data = await response.json();
-      console.log('API Response data:', data);
+      console.log('OpenRouter success response:', data);
       
-      return data.choices[0]?.message?.content || "Hmm, kuch samajh nahi aaya! 🤔 Fir se try karo.";
+      if (data.choices && data.choices[0] && data.choices[0].message) {
+        return data.choices[0].message.content || "Kuch response nahi mila! 🤔";
+      } else {
+        console.error('Unexpected response format:', data);
+        return "Response format unexpected hai! 😕 Fir se try karo.";
+      }
+      
     } catch (error) {
-      console.error('AI Service Error:', error);
-      return "Oops! Internet connection check karo, ya API key sahi hai? 🤷‍♂️ Fallback response: Main yahan hu aur tumhari help karne ke liye ready hu! 😊";
+      console.error('Network/Fetch Error:', error);
+      return "Network error aa gaya! 🌐 Internet connection check karo aur fir try karo.";
     }
   }
 }
