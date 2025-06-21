@@ -40,9 +40,20 @@ export class AIService {
 
       console.log('Making API request to OpenRouter...');
       console.log('API Key length:', this.apiKey.length);
-      console.log('API Key prefix:', this.apiKey.substring(0, 10) + '...');
+      console.log('API Key prefix:', this.apiKey.substring(0, 15) + '...');
+      console.log('Full API Key for debugging:', this.apiKey);
       
-      // Use OpenRouter API endpoint with proper headers
+      // Try multiple approaches for OpenRouter API
+      const requestBody = {
+        model: 'meta-llama/llama-3.2-3b-instruct:free',
+        messages: messages,
+        max_tokens: 300,
+        temperature: 0.7,
+      };
+
+      console.log('Request body:', JSON.stringify(requestBody, null, 2));
+      
+      // Use OpenRouter API endpoint with all possible headers
       const response = await fetch('https://openrouter.ai/api/v1/chat/completions', {
         method: 'POST',
         headers: {
@@ -50,14 +61,11 @@ export class AIService {
           'Content-Type': 'application/json',
           'HTTP-Referer': window.location.origin,
           'X-Title': 'AI Chatbot',
-          'Accept': 'application/json'
+          'Accept': 'application/json',
+          'Origin': window.location.origin,
+          'User-Agent': 'AI-Chatbot/1.0'
         },
-        body: JSON.stringify({
-          model: 'meta-llama/llama-3.2-3b-instruct:free',
-          messages: messages,
-          max_tokens: 300,
-          temperature: 0.7,
-        }),
+        body: JSON.stringify(requestBody),
       });
 
       console.log('API Response status:', response.status);
@@ -68,7 +76,7 @@ export class AIService {
         console.error('API Error Details:', errorData);
         
         if (response.status === 401) {
-          return "API key invalid hai yaar! 🔑 OpenRouter mein check karo - key sahi hai ya expired toh nahi?";
+          return "Yaar API key problem hai! 🔑 OpenRouter dashboard mein check karo:\n1. Key valid hai?\n2. Credits available hain?\n3. Key ko regenerate kar ke try karo\n\nAbhi ke liye fallback response de raha hu! 😊";
         } else if (response.status === 402) {
           return "Credits khatam ho gaye! 💸 OpenRouter account mein balance add karo.";
         } else if (response.status === 429) {
@@ -84,7 +92,7 @@ export class AIService {
       return data.choices[0]?.message?.content || "Hmm, kuch samajh nahi aaya! 🤔 Fir se try karo.";
     } catch (error) {
       console.error('AI Service Error:', error);
-      return "Oops! Internet connection check karo, ya API key sahi hai? 🤷‍♂️";
+      return "Oops! Internet connection check karo, ya API key sahi hai? 🤷‍♂️ Fallback response: Main yahan hu aur tumhari help karne ke liye ready hu! 😊";
     }
   }
 }
