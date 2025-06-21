@@ -1,4 +1,3 @@
-
 import { useState, useEffect, useRef } from 'react';
 import { Send, Bot } from 'lucide-react';
 import { Button } from '@/components/ui/button';
@@ -27,9 +26,9 @@ const Index = () => {
   const [inputText, setInputText] = useState('');
   const [isTyping, setIsTyping] = useState(false);
   const [apiKey, setApiKey] = useState(() => {
-    // Check if API key is already stored, otherwise use the provided key
+    // Check if API key is already stored, otherwise use the new provided key
     const storedKey = localStorage.getItem('openai-api-key');
-    return storedKey || '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';
+    return storedKey || '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';
   });
   const [showSettings, setShowSettings] = useState(false);
   const messagesEndRef = useRef<HTMLDivElement>(null);
